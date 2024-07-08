@@ -7,6 +7,8 @@ use uart::Uart;
 fn main() {
     let mut uart = Uart::new().unwrap();
 
+    uart.clear_rx_tx().unwrap();
+
     let data = 123;
     let response = uart.write_int(data).unwrap();
     println!("write_int: {} -> {}", data, response);
@@ -27,4 +29,6 @@ fn main() {
 
     let response = uart.read_string().unwrap();
     println!("read_string: {}", response);
+
+    uart.clear_rx_tx().unwrap();
 }

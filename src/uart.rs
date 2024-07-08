@@ -1,7 +1,7 @@
 use std::{thread, time::Duration};
 
 use crate::modbus;
-use rppal::uart::{Error, Parity, Uart as RppalUart};
+use rppal::uart::{Error, Parity, Queue, Uart as RppalUart};
 
 pub struct Uart {
     uart: RppalUart,
@@ -11,6 +11,10 @@ impl Uart {
     pub fn new() -> Result<Self, Error> {
         let uart = RppalUart::new(9600, Parity::None, 8, 1)?;
         Ok(Uart { uart })
+    }
+
+    pub fn clear_rx_tx(&mut self) -> Result<(), Error> {
+        self.uart.flush(Queue::Both)
     }
 
     pub fn write_int(&mut self, data: i32) -> Result<i32, Error> {
