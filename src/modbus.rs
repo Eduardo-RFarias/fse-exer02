@@ -35,9 +35,12 @@ pub const WRITE_STRING: Command = Command {
     subcode: 0xB3,
 };
 
+pub const TARGET_ADDRESS: u8 = 0x01;
+
 pub fn create_modbus_message(command: &Command, data: &[u8]) -> Vec<u8> {
     let mut message = Vec::with_capacity(5 + data.len());
 
+    message.push(TARGET_ADDRESS);
     message.push(command.code);
     message.push(command.subcode);
     message.extend(data);
