@@ -38,15 +38,16 @@ pub const WRITE_STRING: Command = Command {
 pub const TARGET_ADDRESS: u8 = 0x01;
 
 pub fn create_modbus_message(command: &Command, data: &[u8]) -> Vec<u8> {
-    let mut message = Vec::with_capacity(5 + data.len());
+    let mut message = Vec::with_capacity(9 + data.len());
 
     message.push(TARGET_ADDRESS);
     message.push(command.code);
     message.push(command.subcode);
     message.extend(data);
+    message.extend([0, 0, 8, 6]);
 
     let crc = crc16::hash(&message);
-    message.extend(&crc.to_be_bytes());
+    message.extend(&crc.to_le_bytes());
 
     message
 }
