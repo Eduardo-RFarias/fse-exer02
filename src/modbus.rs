@@ -53,9 +53,6 @@ pub fn create_modbus_message(command: &Command, data: &[u8]) -> Vec<u8> {
 }
 
 pub fn extract_modbus_message(message: &[u8; 9]) -> Result<[u8; 4], &str> {
-    let _target_address = message[0];
-    let _code = message[1];
-    let _subcode = message[2];
     let data = &message[3..message.len() - 2];
     let crc = u16::from_le_bytes([message[message.len() - 2], message[message.len() - 1]]);
 

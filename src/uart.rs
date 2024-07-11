@@ -30,7 +30,7 @@ impl Uart {
 
         let response = modbus::extract_modbus_message(&response).unwrap();
 
-        Ok(i32::from_be_bytes(response))
+        Ok(i32::from_le_bytes(response))
     }
 
     pub fn write_float(&mut self, data: f32) -> Result<f32, Error> {
@@ -44,7 +44,7 @@ impl Uart {
 
         let response = modbus::extract_modbus_message(&response).unwrap();
 
-        Ok(f32::from_be_bytes(response))
+        Ok(f32::from_le_bytes(response))
     }
 
     pub fn write_string(&mut self, data: &str) -> Result<String, Error> {
@@ -61,19 +61,19 @@ impl Uart {
         let mut header = vec![0; 4];
         self.uart.read(&mut header)?;
 
-        let mut body = vec![0; header[3] as usize];
+        let mut body = vec![0; (header[3] as usize) + 1];
         self.uart.read(&mut body)?;
 
-        let mut crc = vec![0; 2];
+        let mut crc = [0; 2];
         self.uart.read(&mut crc)?;
 
         let response: Vec<u8> = [header, body.clone()].concat();
 
-        let crc = u16::from_le_bytes([crc[0], crc[1]]);
+        let crc = u16::from_le_bytes(crc);
         let expected_crc = crc16::hash(&response);
 
         if crc != expected_crc {
-            return Err(Error::InvalidValue);
+            panic!("Invalid CRC");
         }
 
         Ok(String::from_utf8(body).unwrap())
@@ -90,7 +90,7 @@ impl Uart {
 
         let response = modbus::extract_modbus_message(&response).unwrap();
 
-        Ok(i32::from_be_bytes(response))
+        Ok(i32::from_le_bytes(response))
     }
 
     pub fn read_float(&mut self) -> Result<f32, Error> {
@@ -104,7 +104,7 @@ impl Uart {
 
         let response = modbus::extract_modbus_message(&response).unwrap();
 
-        Ok(f32::from_be_bytes(response))
+        Ok(f32::from_le_bytes(response))
     }
 
     pub fn read_string(&mut self) -> Result<String, Error> {
@@ -116,7 +116,7 @@ impl Uart {
         let mut header = vec![0; 4];
         self.uart.read(&mut header)?;
 
-        let mut body = vec![0; header[3] as usize];
+        let mut body = vec![0; (header[3] as usize) + 1];
         self.uart.read(&mut body)?;
 
         let mut crc = vec![0; 2];
@@ -128,7 +128,7 @@ impl Uart {
         let expected_crc = crc16::hash(&response);
 
         if crc != expected_crc {
-            return Err(Error::InvalidValue);
+            panic!("Invalid CRC");
         }
 
         Ok(String::from_utf8(body).unwrap())

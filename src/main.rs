@@ -14,11 +14,11 @@ fn main() {
     println!("write_int: {}->{}", data, response);
 
     let data = 123.456;
-    uart.write_float(data).unwrap();
+    let response = uart.write_float(data).unwrap();
     println!("write_float: {}->{}", data, response);
 
     let data = "Hello, World!";
-    uart.write_string(data).unwrap();
+    let response = uart.write_string(data).unwrap();
     println!("write_string: {}->{}", data, response);
 
     let response = uart.read_int().unwrap();
