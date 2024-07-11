@@ -1,7 +1,6 @@
-use std::{thread, time::Duration};
-
-use crate::modbus;
+use crate::{crc16, modbus};
 use rppal::uart::{Error, Parity, Queue, Uart as RppalUart};
+use std::{thread, time::Duration};
 
 pub struct Uart {
     uart: RppalUart,
@@ -20,19 +19,35 @@ impl Uart {
         self.uart.flush(Queue::Both)
     }
 
-    pub fn write_int(&mut self, data: i32) -> Result<(), Error> {
+    pub fn write_int(&mut self, data: i32) -> Result<i32, Error> {
         let message = modbus::create_modbus_message(&modbus::WRITE_INT, &data.to_le_bytes());
         self.uart.write(&message)?;
-        Ok(())
+
+        thread::sleep(Duration::from_millis(100));
+
+        let mut response = [0; 9];
+        self.uart.read(&mut response)?;
+
+        let response = modbus::extract_modbus_message(&response).unwrap();
+
+        Ok(i32::from_be_bytes(response))
     }
 
-    pub fn write_float(&mut self, data: f32) -> Result<(), Error> {
+    pub fn write_float(&mut self, data: f32) -> Result<f32, Error> {
         let message = modbus::create_modbus_message(&modbus::WRITE_FLOAT, &data.to_le_bytes());
         self.uart.write(&message)?;
-        Ok(())
+
+        thread::sleep(Duration::from_millis(100));
+
+        let mut response = [0; 9];
+        self.uart.read(&mut response)?;
+
+        let response = modbus::extract_modbus_message(&response).unwrap();
+
+        Ok(f32::from_be_bytes(response))
     }
 
-    pub fn write_string(&mut self, data: &str) -> Result<(), Error> {
+    pub fn write_string(&mut self, data: &str) -> Result<String, Error> {
         // string message is 1 byte for length and n bytes for data
         let mut message = Vec::with_capacity(1 + data.len());
         message.push(data.len() as u8);
@@ -40,7 +55,28 @@ impl Uart {
 
         let message = modbus::create_modbus_message(&modbus::WRITE_STRING, &message);
         self.uart.write(&message)?;
-        Ok(())
+
+        thread::sleep(Duration::from_millis(100));
+
+        let mut header = vec![0; 4];
+        self.uart.read(&mut header)?;
+
+        let mut body = vec![0; header[3] as usize];
+        self.uart.read(&mut body)?;
+
+        let mut crc = vec![0; 2];
+        self.uart.read(&mut crc)?;
+
+        let response: Vec<u8> = [header, body.clone()].concat();
+
+        let crc = u16::from_le_bytes([crc[0], crc[1]]);
+        let expected_crc = crc16::hash(&response);
+
+        if crc != expected_crc {
+            return Err(Error::InvalidValue);
+        }
+
+        Ok(String::from_utf8(body).unwrap())
     }
 
     pub fn read_int(&mut self) -> Result<i32, Error> {
@@ -49,8 +85,10 @@ impl Uart {
 
         thread::sleep(Duration::from_millis(100));
 
-        let mut response = [0; 4];
+        let mut response = [0; 9];
         self.uart.read(&mut response)?;
+
+        let response = modbus::extract_modbus_message(&response).unwrap();
 
         Ok(i32::from_be_bytes(response))
     }
@@ -61,8 +99,10 @@ impl Uart {
 
         thread::sleep(Duration::from_millis(100));
 
-        let mut response = [0; 4];
+        let mut response = [0; 9];
         self.uart.read(&mut response)?;
+
+        let response = modbus::extract_modbus_message(&response).unwrap();
 
         Ok(f32::from_be_bytes(response))
     }
@@ -73,13 +113,24 @@ impl Uart {
 
         thread::sleep(Duration::from_millis(100));
 
-        let mut response = [0; 1];
-        self.uart.read(&mut response)?;
-        let str_size = response[0] as usize;
+        let mut header = vec![0; 4];
+        self.uart.read(&mut header)?;
 
-        let mut response = vec![0; str_size];
-        self.uart.read(&mut response)?;
+        let mut body = vec![0; header[3] as usize];
+        self.uart.read(&mut body)?;
 
-        Ok(String::from_utf8(response).unwrap())
+        let mut crc = vec![0; 2];
+        self.uart.read(&mut crc)?;
+
+        let response: Vec<u8> = [header, body.clone()].concat();
+
+        let crc = u16::from_le_bytes([crc[0], crc[1]]);
+        let expected_crc = crc16::hash(&response);
+
+        if crc != expected_crc {
+            return Err(Error::InvalidValue);
+        }
+
+        Ok(String::from_utf8(body).unwrap())
     }
 }

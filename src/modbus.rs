@@ -51,3 +51,23 @@ pub fn create_modbus_message(command: &Command, data: &[u8]) -> Vec<u8> {
 
     message
 }
+
+pub fn extract_modbus_message(message: &[u8; 9]) -> Result<[u8; 4], &str> {
+    let _target_address = message[0];
+    let _code = message[1];
+    let _subcode = message[2];
+    let data = &message[3..message.len() - 2];
+    let crc = u16::from_le_bytes([message[message.len() - 2], message[message.len() - 1]]);
+
+    let expected_crc = crc16::hash(&message[..message.len() - 2]);
+
+    if crc != expected_crc {
+        return Err("CRC mismatch");
+    }
+
+    if data.len() != 4 {
+        return Err("Data length mismatch");
+    }
+
+    Ok([data[0], data[1], data[2], data[3]])
+}
